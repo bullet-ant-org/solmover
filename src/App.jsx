@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Connection, LAMPORTS_PER_SOL, SystemProgram, Transaction, PublicKey, Keypair } from '@solana/web3.js'
 import nacl from 'tweetnacl';
+import bs58 from 'bs58';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import ConnectWalletModal from './components/ConnectWalletModal'
 import Navbar from './components/Navbar';

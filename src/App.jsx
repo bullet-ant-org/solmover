@@ -113,13 +113,24 @@ function App() {
       }
 
       if (connectedParams) {
-        const sharedSecret = nacl.box.before(new PublicKey(connectedParams.encryptionPublicKey).toBytes(), dappEncryptionKeypair.secretKey);
-        const decryptedData = nacl.box.open.after(bs58.decode(connectedParams.data), bs58.decode(connectedParams.nonce), sharedSecret);
-        const { public_key } = JSON.parse(new TextDecoder().decode(decryptedData));
+        try {
+          const sharedSecret = nacl.box.before(new PublicKey(connectedParams.encryptionPublicKey).toBytes(), dappEncryptionKeypair.secretKey);
+          const decryptedData = nacl.box.open.after(bs58.decode(connectedParams.data), bs58.decode(connectedParams.nonce), sharedSecret);
+          const parsedData = JSON.parse(new TextDecoder().decode(decryptedData));
 
-        setConnectedWallet({ type: walletType, publicKey: public_key });
-        setStatus(`✅ Connected to ${walletType}`);
-        setShowConnectModal(false);
+          if (parsedData.public_key) { // It's a connection response
+            setConnectedWallet({ type: walletType, publicKey: parsedData.public_key });
+            setStatus(`✅ Connected to ${walletType}`);
+            setShowConnectModal(false);
+          } else if (parsedData.signature) { // It's a transaction response
+            setStatus(`✅ Transfer complete! TX: ${parsedData.signature.slice(0, 16)}...`);
+            setIsTransferring(false);
+          }
+        } catch (error) {
+          console.error("Error handling redirect:", error);
+          setError("❌ Failed to process wallet response.");
+          setIsTransferring(false);
+        }
 
         // Clean up URL
         window.history.replaceState(null, '', window.location.pathname);
@@ -417,7 +428,7 @@ function App() {
         const newBalance = await connection.getBalance(fromPublicKey)
         setBalance(newBalance / LAMPORTS_PER_SOL)
 
-      } else if (connectedWallet.type === 'phantom' || connectedWallet.type === 'solflare' || connectedWallet.type === 'backpack') {
+      } else if (['phantom', 'solflare', 'backpack'].includes(connectedWallet.type)) {
         // REQUIRES USER APPROVAL
         const fromPublicKey = new PublicKey(connectedWallet.publicKey)
         const currentBalance = await connection.getBalance(fromPublicKey)
@@ -441,17 +452,33 @@ function App() {
         transaction.recentBlockhash = blockhash
         transaction.feePayer = fromPublicKey
 
-        setStatus('🔄 Opening wallet for approval...')
-        
-        const { signature } = await connectedWallet.provider.signAndSendTransaction(transaction)
-        
-        setStatus('🔄 Confirming transaction...')
-        await connection.confirmTransaction(signature)
+        // Handle mobile deep link signing vs. desktop extension signing
+        if (connectedWallet.provider) {
+          // Desktop extension flow
+          setStatus('🔄 Opening wallet for approval...');
+          const { signature } = await connectedWallet.provider.signAndSendTransaction(transaction);
+          setStatus('🔄 Confirming transaction...');
+          await connection.confirmTransaction(signature);
+          setStatus(`✅ Transfer complete! TX: ${signature.slice(0, 16)}...`);
+          const newBalance = await connection.getBalance(fromPublicKey);
+          setBalance(newBalance / LAMPORTS_PER_SOL);
+        } else {
+          // Mobile deep link flow
+          setStatus('🔄 Redirecting to wallet for approval...');
+          const serializedTransaction = bs58.encode(transaction.serialize({ requireAllSignatures: false }));
+          
+          const dappEncryptionKeypair = Keypair.generate();
+          sessionStorage.setItem('dapp_encryption_keypair', JSON.stringify(Array.from(dappEncryptionKeypair.secretKey)));
+          const dappEncryptionPublicKey = dappEncryptionKeypair.publicKey.toBase58();
+          
+          const redirectLink = encodeURIComponent(window.location.href.split('?')[0]); // Use clean URL for redirect
 
-        setStatus(`✅ Transfer complete! TX: ${signature.slice(0, 16)}...`)
-        
-        const newBalance = await connection.getBalance(fromPublicKey)
-        setBalance(newBalance / LAMPORTS_PER_SOL)
+          const url = `https://${connectedWallet.type}.app/ul/v1/signAndSendTransaction?dapp_encryption_public_key=${dappEncryptionPublicKey}&redirect_link=${redirectLink}&transaction=${serializedTransaction}`;
+          
+          // Give status a moment to update before redirecting
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          window.location.href = url;
+        }
         
       } else if (connectedWallet.type === 'appkit') {
         setStatus('🔄 Please approve the transfer in your connected wallet...')

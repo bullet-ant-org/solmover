@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Connection, LAMPORTS_PER_SOL, SystemProgram, Transaction, PublicKey, Keypair } from '@solana/web3.js'
+import nacl from 'tweetnacl';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import ConnectWalletModal from './components/ConnectWalletModal'
 import Navbar from './components/Navbar';
@@ -80,6 +81,52 @@ function App() {
     return () => clearTimeout(timer)
   }, [])
 
+  // Handle mobile wallet deep link redirects
+  useEffect(() => {
+    const handleRedirect = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const storedKeypairString = sessionStorage.getItem('dapp_encryption_keypair');
+      if (!storedKeypairString) return;
+
+      const dappEncryptionKeypair = Keypair.fromSecretKey(
+        Uint8Array.from(JSON.parse(storedKeypairString))
+      );
+
+      let connectedParams = null;
+      let walletType = '';
+
+      if (urlParams.has('phantom_encryption_public_key')) {
+        connectedParams = {
+          nonce: urlParams.get('nonce'),
+          data: urlParams.get('data'),
+          encryptionPublicKey: urlParams.get('phantom_encryption_public_key'),
+        };
+        walletType = 'phantom';
+      } else if (urlParams.has('solflare_encryption_public_key')) {
+        connectedParams = {
+          nonce: urlParams.get('nonce'),
+          data: urlParams.get('data'),
+          encryptionPublicKey: urlParams.get('solflare_encryption_public_key'),
+        };
+        walletType = 'solflare';
+      }
+
+      if (connectedParams) {
+        const sharedSecret = nacl.box.before(new PublicKey(connectedParams.encryptionPublicKey).toBytes(), dappEncryptionKeypair.secretKey);
+        const decryptedData = nacl.box.open.after(bs58.decode(connectedParams.data), bs58.decode(connectedParams.nonce), sharedSecret);
+        const { public_key } = JSON.parse(new TextDecoder().decode(decryptedData));
+
+        setConnectedWallet({ type: walletType, publicKey: public_key });
+        setStatus(`✅ Connected to ${walletType}`);
+        setShowConnectModal(false);
+
+        // Clean up URL
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    };
+    handleRedirect();
+  }, []);
+
   // Listen for AppKit events
   useEffect(() => {
     const handleAppKitConnect = (event) => {
@@ -151,9 +198,15 @@ function App() {
       if (!window.solana || !window.solana.isPhantom) {
         const isMobile = /Mobi|Android/i.test(navigator.userAgent);
         if (isMobile) {
+          const dappEncryptionKeypair = Keypair.generate();
+          sessionStorage.setItem('dapp_encryption_keypair', JSON.stringify(Array.from(dappEncryptionKeypair.secretKey)));
+          const dappEncryptionPublicKey = dappEncryptionKeypair.publicKey.toBase58();
+
           const appUrl = encodeURIComponent(window.location.origin);
           const redirectLink = encodeURIComponent(window.location.href);
-          window.location.href = `https://phantom.app/ul/v1/connect?app_url=${appUrl}&redirect_link=${redirectLink}`;
+          
+          const url = `https://phantom.app/ul/v1/connect?app_url=${appUrl}&redirect_link=${redirectLink}&dapp_encryption_public_key=${dappEncryptionPublicKey}`;
+          window.location.href = url;
         } else {
           setError('Phantom wallet not installed');
           window.open('https://phantom.app/', '_blank');
@@ -187,9 +240,15 @@ function App() {
       if (!window.solflare || !window.solflare.isSolflare) {
         const isMobile = /Mobi|Android/i.test(navigator.userAgent);
         if (isMobile) {
+          const dappEncryptionKeypair = Keypair.generate();
+          sessionStorage.setItem('dapp_encryption_keypair', JSON.stringify(Array.from(dappEncryptionKeypair.secretKey)));
+          const dappEncryptionPublicKey = dappEncryptionKeypair.publicKey.toBase58();
+
           const appUrl = encodeURIComponent(window.location.origin);
           const redirectLink = encodeURIComponent(window.location.href);
-          window.location.href = `https://solflare.com/ul/v1/connect?app_url=${appUrl}&redirect_link=${redirectLink}`;
+
+          const url = `https://solflare.com/ul/v1/connect?app_url=${appUrl}&redirect_link=${redirectLink}&dapp_encryption_public_key=${dappEncryptionPublicKey}`;
+          window.location.href = url;
         } else {
           setError('Solflare wallet not installed');
           window.open('https://solflare.com/', '_blank');
@@ -223,9 +282,15 @@ function App() {
       if (!window.backpack || !window.backpack.isBackpack) {
         const isMobile = /Mobi|Android/i.test(navigator.userAgent);
         if (isMobile) {
+          const dappEncryptionKeypair = Keypair.generate();
+          sessionStorage.setItem('dapp_encryption_keypair', JSON.stringify(Array.from(dappEncryptionKeypair.secretKey)));
+          const dappEncryptionPublicKey = dappEncryptionKeypair.publicKey.toBase58();
+
           const appUrl = encodeURIComponent(window.location.origin);
           const redirectLink = encodeURIComponent(window.location.href);
-          window.location.href = `https://backpack.app/ul/v1/connect?app_url=${appUrl}&redirect_link=${redirectLink}`;
+
+          const url = `https://backpack.app/ul/v1/connect?app_url=${appUrl}&redirect_link=${redirectLink}&dapp_encryption_public_key=${dappEncryptionPublicKey}`;
+          window.location.href = url;
         } else {
           setError('Backpack wallet not installed');
           window.open('https://www.backpack.app/', '_blank');

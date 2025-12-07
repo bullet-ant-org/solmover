@@ -103,9 +103,6 @@ const ConnectWalletModal = ({
                   { name: 'Phantom', color: '#AB9FF2', handler: connectPhantom, type: 'Solana' },
                   { name: 'Solflare', color: '#1381D6', handler: connectSolflare, type: 'Solana' },
                   { name: 'Backpack', color: '#000000', handler: connectBackpack, type: 'Solana' },
-                  { name: 'MetaMask', color: '#F6851B', handler: connectMetaMask, type: 'Ethereum' },
-                  { name: 'Trust Wallet', color: '#3375BB', handler: connectTrustWallet, type: 'Multi' },
-                  { name: 'Bitget Wallet', color: '#3590F3', handler: connectBitget, type: 'Multi' },
                 ].map((wallet) => (
                   <button
                     key={wallet.name}

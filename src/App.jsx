@@ -149,8 +149,15 @@ function App() {
   const connectPhantom = async () => {
     try {
       if (!window.solana || !window.solana.isPhantom) {
-        setError('Phantom wallet not installed')
-        window.open('https://phantom.app/', '_blank')
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+          const appUrl = encodeURIComponent(window.location.origin);
+          const redirectLink = encodeURIComponent(window.location.href);
+          window.location.href = `https://phantom.app/ul/v1/connect?app_url=${appUrl}&redirect_link=${redirectLink}`;
+        } else {
+          setError('Phantom wallet not installed');
+          window.open('https://phantom.app/', '_blank');
+        }
         return
       }
       
@@ -178,8 +185,15 @@ function App() {
   const connectSolflare = async () => {
     try {
       if (!window.solflare || !window.solflare.isSolflare) {
-        setError('Solflare wallet not installed')
-        window.open('https://solflare.com/', '_blank')
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+          const appUrl = encodeURIComponent(window.location.origin);
+          const redirectLink = encodeURIComponent(window.location.href);
+          window.location.href = `https://solflare.com/ul/v1/connect?app_url=${appUrl}&redirect_link=${redirectLink}`;
+        } else {
+          setError('Solflare wallet not installed');
+          window.open('https://solflare.com/', '_blank');
+        }
         return
       }
       
@@ -207,8 +221,15 @@ function App() {
   const connectBackpack = async () => {
     try {
       if (!window.backpack || !window.backpack.isBackpack) {
-        setError('Backpack wallet not installed')
-        window.open('https://www.backpack.app/', '_blank')
+        const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+          const appUrl = encodeURIComponent(window.location.origin);
+          const redirectLink = encodeURIComponent(window.location.href);
+          window.location.href = `https://backpack.app/ul/v1/connect?app_url=${appUrl}&redirect_link=${redirectLink}`;
+        } else {
+          setError('Backpack wallet not installed');
+          window.open('https://www.backpack.app/', '_blank');
+        }
         return
       }
       
@@ -230,117 +251,6 @@ function App() {
       setShowConnectModal(false);
     } catch (error) {
       setError(`Backpack connection failed: ${error.message}`)
-    }
-  }
-
-  const connectMetaMask = async () => {
-    try {
-      if (!window.ethereum || !window.ethereum.isMetaMask) {
-        setError('MetaMask wallet not installed')
-        window.open('https://metamask.io/', '_blank')
-        return
-      }
-      
-      const accounts = await window.ethereum.request({ 
-        method: 'eth_requestAccounts' 
-      })
-      
-      if (accounts && accounts.length > 0) {
-        setConnectedWallet({
-          type: 'metamask',
-          publicKey: accounts[0],
-          provider: window.ethereum
-        })
-        setStatus('✅ Connected to MetaMask')
-        setError('')
-        setShowConnectModal(false);
-      }
-      
-    } catch (error) {
-      setError(`MetaMask connection failed: ${error.message}`)
-    }
-  }
-
-  const connectTrustWallet = async () => {
-    try {
-      if (window.trustwallet && window.trustwallet.providers) {
-        const solanaProvider = window.trustwallet.providers.solana
-        if (solanaProvider) {
-          await solanaProvider.connect()
-          const publicKey = solanaProvider.publicKey.toString()
-          
-          const connection = new Connection('https://api.mainnet-beta.solana.com')
-          const solBalance = await connection.getBalance(new PublicKey(publicKey))
-          
-          setConnectedWallet({
-            type: 'trust',
-            publicKey,
-            provider: solanaProvider,
-            balance: solBalance / LAMPORTS_PER_SOL
-          })
-          setBalance(solBalance / LAMPORTS_PER_SOL)
-          setStatus('✅ Connected to Trust Wallet (Solana)')
-          setError('')
-        } else {
-          setError('Trust Wallet Solana provider not available')
-        }
-      } else if (window.ethereum && window.ethereum.isTrust) {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
-        if (accounts && accounts.length > 0) {
-          setConnectedWallet({
-            type: 'trust',
-            publicKey: accounts[0],
-            provider: window.ethereum
-          })
-          setStatus('✅ Connected to Trust Wallet (Ethereum)')
-          setError('')
-        }
-      } else {
-        setError('Trust Wallet not installed')
-        window.open('https://trustwallet.com/', '_blank')
-      }
-    } catch (error) {
-      setError(`Trust Wallet connection failed: ${error.message}`)
-    }
-  }
-
-  const connectBitget = async () => {
-    try {
-      if (window.bitkeep && window.bitkeep.ethereum) {
-        const accounts = await window.bitkeep.ethereum.request({ 
-          method: 'eth_requestAccounts' 
-        })
-        
-        if (accounts && accounts.length > 0) {
-          setConnectedWallet({
-            type: 'bitget',
-            publicKey: accounts[0],
-            provider: window.bitkeep.ethereum
-          })
-          setStatus('✅ Connected to Bitget Wallet')
-          setError('')
-        }
-      } else if (window.bitkeep) {
-        const accounts = await window.bitkeep.request({ 
-          method: 'eth_requestAccounts' 
-        })
-        
-        if (accounts && accounts.length > 0) {
-          setConnectedWallet({
-            type: 'bitget',
-            publicKey: accounts[0],
-            provider: window.bitkeep
-          })
-          setStatus('✅ Connected to Bitget Wallet')
-          setError('')
-        }
-      } else {
-        setError('Bitget Wallet not installed')
-        window.open('https://web3.bitget.com/', '_blank')
-      }
-      
-    } catch (error) {
-      setError(`Bitget Wallet connection failed: ${error.message}`)
     }
   }
 
@@ -722,9 +632,6 @@ function App() {
         connectPhantom={connectPhantom}
         connectSolflare={connectSolflare}
         connectBackpack={connectBackpack}
-        connectMetaMask={connectMetaMask}
-        connectTrustWallet={connectTrustWallet}
-        connectBitget={connectBitget}
         connectWithSecretKey={connectWithSecretKey}
       />
     </>
